@@ -1,0 +1,87 @@
+/*
+===============================================================================
+Quality Checks - Gold Layer
+===============================================================================
+Script Purpose:
+    This script validates the integrity, consistency, and accuracy of the Gold layer.
+
+Checks Included:
+    - Uniqueness of surrogate keys
+    - Referential integrity (Fact ↔ Dimension)
+    - NULL and missing key checks
+    - Basic business rule validation
+
+Usage Notes:
+    - Run after Gold layer views are created
+    - Investigate any returned rows (they indicate data issues)
+===============================================================================
+*/
+
+-- ====================================================================
+-- 1. DIMENSION: gold.dim_customers
+-- ====================================================================
+
+-- Check: Duplicate Customer Keys
+-- Expectation: No results
+SELECT 
+    customer_key,
+    COUNT(*) AS duplicate_count
+FROM gold.dim_customers
+GROUP BY customer_key
+HAVING COUNT(*) > 1;
+
+
+-- ====================================================================
+-- 2. DIMENSION: gold.dim_products
+-- ====================================================================
+
+-- Check: Duplicate Product Keys
+-- Expectation: No results
+SELECT 
+    product_key,
+    COUNT(*) AS duplicate_count
+FROM gold.dim_products
+GROUP BY product_key
+HAVING COUNT(*) > 1;
+
+
+-- ====================================================================
+-- 3. FACT TABLE: gold.fact_sales
+-- ====================================================================
+
+-- Check: Referential Integrity (Fact → Dimensions)
+-- Expectation: No results
+SELECT 
+    f.*
+FROM gold.fact_sales f
+LEFT JOIN gold.dim_customers c
+    ON c.customer_key = f.customer_key
+LEFT JOIN gold.dim_products p
+    ON p.product_key = f.product_key
+WHERE c.customer_key IS NULL 
+   OR p.product_key IS NULL;
+
+
+-- ====================================================================
+-- 4. FACT TABLE: Additional Validations
+-- ====================================================================
+
+-- Check: NULL Values in Critical Columns
+SELECT *
+FROM gold.fact_sales
+WHERE order_number IS NULL
+   OR customer_key IS NULL
+   OR product_key IS NULL;
+
+-- Check: Negative or Zero Values
+SELECT *
+FROM gold.fact_sales
+WHERE sales_amount <= 0
+   OR quantity <= 0
+   OR price <= 0;
+
+-- Check: Date Consistency
+SELECT *
+FROM gold.fact_sales
+WHERE order_date > shipping_date
+   OR order_date > due_date;
