@@ -1,0 +1,60 @@
+name: MySQL Warehouse Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: DataWarehouse
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install MySQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
+
+      - name: Initialize database
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/init_database.sql
+
+      - name: Create Bronze tables
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/bronze/ddl_bronze.sql
+
+      - name: Load Bronze data
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/bronze/load_bronze.sql
+
+      - name: Build Silver
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/silver/ddl_silver.sql
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/silver/proc_load_silver.sql
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot -e             "CALL DataWarehouse.silver.load_silver();"
+
+      - name: Build Gold
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot             < scripts/gold/ddl_gold.sql
+
+      - name: Run CI data-quality validation
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot             < tests/ci_validation.sql
