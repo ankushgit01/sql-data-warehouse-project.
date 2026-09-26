@@ -1,14 +1,14 @@
 # SQL Data Warehouse & Analytics Project
 
-An end-to-end **MySQL 8.0** data warehouse project that integrates CRM and ERP CSV sources using a **Bronze → Silver → Gold** architecture and a **star schema** for analytics.
+An end-to-end **MySQL 8.0** data warehouse project integrating CRM and ERP CSV sources through a **Bronze → Silver → Gold** architecture and a **star schema** for analytics.
 
-## Project objectives
+## Objectives
 
-- Ingest raw CRM and ERP data into a Bronze layer.
+- Ingest raw CRM and ERP data into Bronze.
 - Clean, standardize, validate, and enrich data in Silver.
 - Build analytics-ready Gold dimensions and facts.
 - Apply reusable data-quality checks.
-- Answer business questions around customer behavior, product performance, and sales trends.
+- Analyze customer behavior, product performance, and sales trends.
 
 ## Architecture
 
@@ -20,16 +20,14 @@ ERP CSVs ─────────┘                                      ├
                                                         └── fact_sales
 ```
 
-## Technology stack
+## Technology
 
-| Component | Technology |
-|---|---|
-| Database | MySQL 8.0+ |
-| Language | SQL |
-| Architecture | Medallion (Bronze / Silver / Gold) |
-| Modeling | Star schema |
-| Source format | CSV |
-| Version control | Git / GitHub |
+- MySQL 8.0+
+- SQL
+- Medallion architecture
+- Star schema
+- CSV source data
+- Git/GitHub
 
 ## Repository structure
 
@@ -66,21 +64,7 @@ tests/
 └── quality_checks_gold.sql
 ```
 
-## Data sources
-
-### CRM
-- `cust_info.csv` — customer master data.
-- `prd_info.csv` — product master and product history.
-- `sales_details.csv` — sales transactions.
-
-### ERP
-- `CUST_AZ12.csv` — customer demographic attributes.
-- `LOC_A101.csv` — customer location.
-- `PX_CAT_G1V2.csv` — product category and subcategory.
-
-## End-to-end execution
-
-Run the scripts in this order:
+## Execution order
 
 1. `scripts/init_database.sql`
 2. `scripts/bronze/ddl_bronze.sql`
@@ -94,25 +78,25 @@ Run the scripts in this order:
 10. `tests/quality_checks_gold.sql`
 11. `scripts/gold/analytics.sql`
 
-See [docs/runbook.md](docs/runbook.md) for setup, loading, validation, and troubleshooting.
+See [docs/runbook.md](docs/runbook.md) for detailed setup and troubleshooting, and [docs/data_model.md](docs/data_model.md) for the warehouse model.
 
-## Engineering practices demonstrated
+## Engineering practices
 
-- Raw-source ingestion with a dedicated Bronze layer.
-- Data cleansing and standardization in Silver.
-- Latest-record deduplication for customers.
-- Date conversion from integer source dates.
-- Product validity windows using window functions.
-- CRM/ERP customer and location integration.
-- Business-rule correction for inconsistent sales and prices.
-- Star-schema dimensions and fact modeling.
-- Referential-integrity and business-rule validation.
-- Reusable SQL analytics on Gold views.
+- Raw ingestion with a dedicated Bronze layer.
+- Cleansing and standardization in Silver.
+- Latest-record customer deduplication with window functions.
+- YYYYMMDD date conversion.
+- Product validity windows.
+- CRM/ERP integration.
+- Sales and price business-rule validation.
+- Star-schema analytical modeling.
+- Referential-integrity and business-rule checks.
+- Reusable analytical SQL.
 
 ## MySQL note
 
-The project is intentionally implemented for **MySQL 8.0+**. The Bronze load uses `LOAD DATA LOCAL INFILE`. Your MySQL client/server must allow local file loading. See the runbook before the first load.
+The project is intentionally implemented for **MySQL 8.0+**. Bronze uses `LOAD DATA LOCAL INFILE`; enable local file loading in the MySQL client/server as described in the runbook.
 
 ## About
 
-Built by **Ankush Kumar** as a hands-on Data Engineering portfolio project.
+Built by **Ankush Kumar** as a Data Engineering portfolio project.
