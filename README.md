@@ -1,102 +1,157 @@
 # SQL Data Warehouse & Analytics Project
 
-An end-to-end **MySQL 8.0** data warehouse project integrating CRM and ERP CSV sources through a **Bronze → Silver → Gold** architecture and a **star schema** for analytics.
+An end-to-end MySQL 8.0+ data warehouse project integrating CRM and ERP CSV sources through a Bronze -> Silver -> Gold architecture and a star-schema-style analytical layer.
 
-## Objectives
+## Project objectives
 
-- Ingest raw CRM and ERP data into Bronze.
-- Clean, standardize, validate, and enrich data in Silver.
-- Build analytics-ready Gold dimensions and facts.
-- Apply reusable data-quality checks.
-- Analyze customer behavior, product performance, and sales trends.
+- Ingest raw CRM and ERP source data into Bronze.
+- Clean, standardize, and reconcile data in Silver.
+- Build analytics-ready Gold dimensions and fact data.
+- Validate data quality at every layer.
+- Answer business questions about customers, products, sales, and shipping performance.
+- Automatically validate the pipeline with GitHub Actions.
 
 ## Architecture
 
-```text
-CRM CSVs ─────────┐
-                  ├──> Bronze (raw) ──> Silver (cleaned) ──> Gold (analytics)
-ERP CSVs ─────────┘                                      ├── dim_customers
-                                                        ├── dim_products
-                                                        └── fact_sales
-```
+CRM CSVs
+  |
+  +--> bronze --> silver --> gold
+                              +--> dim_customers
+                              +--> dim_products
+                              +--> fact_sales
 
-## Technology
+MySQL design note: MySQL uses databases as the layer namespaces in this project. bronze, silver, and gold are separate databases rather than nested schemas.
 
-- MySQL 8.0+
-- SQL
-- Medallion architecture
-- Star schema
-- CSV source data
-- Git/GitHub
+## Technology stack
+
+| Component | Technology |
+|---|---|
+| Database | MySQL 8.0+ |
+| Language | SQL |
+| Architecture | Medallion (Bronze / Silver / Gold) |
+| Modeling | Star schema |
+| Source format | CSV |
+| Version control | Git / GitHub |
+| CI validation | GitHub Actions |
 
 ## Repository structure
 
-```text
 datasets/
-├── source_crm/
-│   ├── cust_info.csv
-│   ├── prd_info.csv
-│   └── sales_details.csv
-└── source_erp/
-    ├── CUST_AZ12.csv
-    ├── LOC_A101.csv
-    └── PX_CAT_G1V2.csv
+  source_crm/
+    cust_info.csv
+    prd_info.csv
+    sales_details.csv
+  source_erp/
+    CUST_AZ12.csv
+    LOC_A101.csv
+    PX_CAT_G1V2.csv
 
 docs/
-├── data_model.md
-└── runbook.md
+  data_model.md
+  runbook.md
 
 scripts/
-├── init_database.sql
-├── bronze/
-│   ├── ddl_bronze.sql
-│   └── load_bronze.sql
-├── silver/
-│   ├── ddl_silver.sql
-│   └── proc_load_silver.sql
-└── gold/
-    ├── ddl_gold.sql
-    └── analytics.sql
+  init_database.sql
+  bronze/
+    ddl_bronze.sql
+    load_bronze.sql
+  silver/
+    ddl_silver.sql
+    proc_load_silver.sql
+  gold/
+    ddl_gold.sql
+    analytics.sql
 
 tests/
-├── quality_checks_bronze.sql
-├── quality_checks_silver.sql
-└── quality_checks_gold.sql
-```
+  ci_validation.sql
+  quality_checks_bronze.sql
+  quality_checks_silver.sql
+  quality_checks_gold.sql
+
+.github/
+  workflows/
+    mysql-validation.yml
+
+## Source data
+
+CRM:
+- cust_info.csv — customer master data.
+- prd_info.csv — product master/history data.
+- sales_details.csv — sales transaction data.
+
+ERP:
+- CUST_AZ12.csv — customer demographics.
+- LOC_A101.csv — customer location.
+- PX_CAT_G1V2.csv — product category metadata.
+
+## Pipeline
+
+### Bronze
+Stores source data with minimal transformation using LOAD DATA LOCAL INFILE.
+
+### Silver
+Applies data cleansing and standardization, including:
+- whitespace cleanup
+- customer deduplication
+- status and gender normalization
+- product category/key normalization
+- product validity-window derivation
+- YYYYMMDD-to-DATE conversion
+- sales/price reconciliation
+- ERP identifier normalization
+
+### Gold
+Creates analytics-ready views:
+- gold.dim_customers
+- gold.dim_products
+- gold.fact_sales
 
 ## Execution order
 
-1. `scripts/init_database.sql`
-2. `scripts/bronze/ddl_bronze.sql`
-3. `scripts/bronze/load_bronze.sql`
-4. `scripts/silver/ddl_silver.sql`
-5. `scripts/silver/proc_load_silver.sql`
-6. `CALL silver.load_silver();`
-7. `scripts/gold/ddl_gold.sql`
-8. `tests/quality_checks_bronze.sql`
-9. `tests/quality_checks_silver.sql`
-10. `tests/quality_checks_gold.sql`
-11. `scripts/gold/analytics.sql`
+Run from the repository root:
 
-See [docs/runbook.md](docs/runbook.md) for setup and [docs/data_model.md](docs/data_model.md) for the model.
+1. scripts/init_database.sql
+2. scripts/bronze/ddl_bronze.sql
+3. scripts/bronze/load_bronze.sql
+4. scripts/silver/ddl_silver.sql
+5. scripts/silver/proc_load_silver.sql
+6. CALL silver.load_silver();
+7. scripts/gold/ddl_gold.sql
+8. tests/quality_checks_bronze.sql
+9. tests/quality_checks_silver.sql
+10. tests/quality_checks_gold.sql
+11. scripts/gold/analytics.sql
 
-## Engineering practices
+See docs/runbook.md for exact setup instructions.
 
-- Raw ingestion with a dedicated Bronze layer.
-- Cleansing and standardization in Silver.
-- Latest-record customer deduplication with window functions.
-- YYYYMMDD date conversion.
-- Product validity windows.
-- CRM/ERP integration.
-- Sales and price business-rule validation.
-- Star-schema analytical modeling.
-- Referential-integrity and business-rule checks.
-- Reusable analytical SQL.
+## Data quality
 
-## MySQL note
+The project includes:
+- Bronze source/key checks
+- Silver cleansing and business-rule checks
+- Gold referential-integrity checks
+- Automated CI validation that fails when critical quality rules are violated
 
-The project is intentionally implemented for **MySQL 8.0+**. Bronze uses `LOAD DATA LOCAL INFILE`; enable local file loading as described in the runbook.
+## Analytics included
+
+- overall warehouse KPIs
+- monthly sales trends
+- top products by revenue
+- revenue by category
+- top customers by lifetime revenue
+- customer distribution by country
+- shipping performance
+
+## Reproducibility
+
+The Bronze loader uses repository-relative CSV paths and LOAD DATA LOCAL INFILE. Run the MySQL client from the repository root with local file loading enabled.
+
+GitHub Actions runs the full pipeline against MySQL 8.0 and executes the critical CI quality checks on pushes and pull requests to main.
+
+## Important limitation
+
+The Gold surrogate keys are generated with ROW_NUMBER(), so they are deterministic for the current source snapshot but are not persistent warehouse keys across arbitrary source changes. This is intentional for the latest-snapshot scope.
 
 ## About
 
-Built by **Ankush Kumar** as a Data Engineering portfolio project.
+Built by Ankush Kumar as a Data Engineering portfolio project.
