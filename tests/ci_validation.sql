@@ -31,7 +31,7 @@ BEGIN
     ) duplicates;
     SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
 
-    /* Product keys, costs, and business-key uniqueness */
+    /* Product keys and costs */
     SELECT COUNT(*) INTO v_count
     FROM silver.crm_prd_info
     WHERE prd_id IS NULL
@@ -40,17 +40,6 @@ BEGIN
        OR prd_cost < 0
        OR prd_line IS NULL;
     SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
-
-    SELECT COUNT(*) INTO v_count
-    FROM (
-        SELECT prd_key
-        FROM silver.crm_prd_info
-        GROUP BY prd_key
-        HAVING COUNT(*) > 1
-    ) duplicate_product_versions;
-
-    /* Duplicate product numbers are expected in Silver because it keeps history. */
-    SET bad_checks = bad_checks + 0;
 
     /* Sales measures */
     SELECT COUNT(*) INTO v_count
