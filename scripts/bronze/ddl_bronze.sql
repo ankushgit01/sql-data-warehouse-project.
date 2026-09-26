@@ -1,14 +1,14 @@
-/* Bronze layer DDL - MySQL 8.0+ */
-USE DataWarehouse;
+/*
+============================================================
+Create Bronze Layer Tables
+============================================================
+Bronze = raw source data.
+Target: MySQL 8.0+
+Database: bronze
+============================================================
+*/
 
-DROP TABLE IF EXISTS bronze.crm_cust_info;
-DROP TABLE IF EXISTS bronze.crm_prd_info;
-DROP TABLE IF EXISTS bronze.crm_sales_details;
-DROP TABLE IF EXISTS bronze.erp_loc_a101;
-DROP TABLE IF EXISTS bronze.erp_cust_az12;
-DROP TABLE IF EXISTS bronze.erp_px_cat_g1v2;
-
-CREATE TABLE bronze.crm_cust_info (
+CREATE TABLE IF NOT EXISTS bronze.crm_cust_info (
     cst_id INT,
     cst_key VARCHAR(50),
     cst_firstname VARCHAR(100),
@@ -18,7 +18,7 @@ CREATE TABLE bronze.crm_cust_info (
     cst_create_date DATE
 );
 
-CREATE TABLE bronze.crm_prd_info (
+CREATE TABLE IF NOT EXISTS bronze.crm_prd_info (
     prd_id INT,
     prd_key VARCHAR(50),
     prd_nm VARCHAR(150),
@@ -28,7 +28,7 @@ CREATE TABLE bronze.crm_prd_info (
     prd_end_dt DATETIME
 );
 
-CREATE TABLE bronze.crm_sales_details (
+CREATE TABLE IF NOT EXISTS bronze.crm_sales_details (
     sls_ord_num VARCHAR(50),
     sls_prd_key VARCHAR(50),
     sls_cust_id INT,
@@ -40,18 +40,18 @@ CREATE TABLE bronze.crm_sales_details (
     sls_price DECIMAL(18,2)
 );
 
-CREATE TABLE bronze.erp_loc_a101 (
+CREATE TABLE IF NOT EXISTS bronze.erp_loc_a101 (
     cid VARCHAR(50),
     cntry VARCHAR(100)
 );
 
-CREATE TABLE bronze.erp_cust_az12 (
+CREATE TABLE IF NOT EXISTS bronze.erp_cust_az12 (
     cid VARCHAR(50),
     ddate DATE,
     gen VARCHAR(50)
 );
 
-CREATE TABLE bronze.erp_px_cat_g1v2 (
+CREATE TABLE IF NOT EXISTS bronze.erp_px_cat_g1v2 (
     id VARCHAR(50),
     cat VARCHAR(100),
     subcat VARCHAR(100),
