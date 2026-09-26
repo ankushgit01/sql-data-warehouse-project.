@@ -22,6 +22,15 @@ LEFT JOIN silver.erp_loc_a101 la
     ON ci.cst_key = la.cid;
 
 CREATE OR REPLACE VIEW gold.dim_products AS
+WITH latest_products AS (
+    SELECT
+        p.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY p.prd_key
+            ORDER BY p.prd_start_dt DESC, p.prd_id DESC
+        ) AS rn
+    FROM silver.crm_prd_info p
+)
 SELECT
     ROW_NUMBER() OVER (ORDER BY pn.prd_id, pn.prd_key) AS product_key,
     pn.prd_id AS product_id,
@@ -34,10 +43,10 @@ SELECT
     pn.prd_cost AS cost,
     pn.prd_line AS product_line,
     pn.prd_start_dt AS start_date
-FROM silver.crm_prd_info pn
+FROM latest_products pn
 LEFT JOIN silver.erp_px_cat_g1v2 pc
     ON pn.cat_id = pc.id
-WHERE pn.prd_end_dt IS NULL;
+WHERE pn.rn = 1;
 
 CREATE OR REPLACE VIEW gold.fact_sales AS
 SELECT
