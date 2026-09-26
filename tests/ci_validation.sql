@@ -15,6 +15,36 @@ CREATE PROCEDURE silver.ci_validation()
 BEGIN
     DECLARE bad_checks INT DEFAULT 0;
     DECLARE v_count INT DEFAULT 0;
+    DECLARE v_count_2 INT DEFAULT 0;
+
+    /* Pipeline completeness: every checked-in source must load rows */
+    SELECT COUNT(*) INTO v_count FROM bronze.crm_cust_info;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM bronze.crm_prd_info;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM bronze.crm_sales_details;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM bronze.erp_cust_az12;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM bronze.erp_loc_a101;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM bronze.erp_px_cat_g1v2;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    /* Silver completeness */
+    SELECT COUNT(*) INTO v_count FROM silver.crm_cust_info;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM silver.crm_prd_info;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM silver.crm_sales_details;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
 
     /* Customer keys and uniqueness */
     SELECT COUNT(*) INTO v_count
@@ -55,6 +85,21 @@ BEGIN
        OR sls_sales <= 0
        OR ABS(sls_sales - (sls_quantity * sls_price)) > 0.01;
     SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
+
+    /* The LEFT JOIN fact must preserve every Silver sales row */
+    SELECT COUNT(*) INTO v_count FROM silver.crm_sales_details;
+    SELECT COUNT(*) INTO v_count_2 FROM gold.fact_sales;
+    SET bad_checks = bad_checks + IF(v_count <> v_count_2, 1, 0);
+
+    /* Gold dimensions/fact must contain data */
+    SELECT COUNT(*) INTO v_count FROM gold.dim_customers;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM gold.dim_products;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count FROM gold.fact_sales;
+    SET bad_checks = bad_checks + IF(v_count = 0, 1, 0);
 
     /* Gold customer/product business keys must be unique */
     SELECT COUNT(*) INTO v_count
@@ -109,7 +154,7 @@ BEGIN
     IF bad_checks > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT =
-                'CI validation failed: critical data-quality checks returned violations.';
+                'CI validation failed: critical completeness or data-quality checks returned violations.';
     END IF;
 END$$
 
