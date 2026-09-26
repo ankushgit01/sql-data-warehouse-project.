@@ -31,7 +31,7 @@ BEGIN
         SELECT b.*,
                ROW_NUMBER() OVER (
                    PARTITION BY cst_id
-                   ORDER BY cst_create_date DESC
+                   ORDER BY cst_create_date DESC, cst_key DESC
                ) AS rn
         FROM bronze.crm_cust_info b
         WHERE cst_id IS NOT NULL
@@ -62,7 +62,7 @@ BEGIN
             DATE(
                 LEAD(prd_start_dt) OVER (
                     PARTITION BY prd_key
-                    ORDER BY prd_start_dt
+                    ORDER BY prd_start_dt, prd_id
                 )
             ),
             INTERVAL 1 DAY
@@ -103,9 +103,18 @@ BEGIN
         sls_ord_num,
         sls_prd_key,
         sls_cust_id,
-        STR_TO_DATE(CAST(sls_order_dt AS CHAR), '%Y%m%d'),
-        STR_TO_DATE(CAST(sls_ship_dt AS CHAR), '%Y%m%d'),
-        STR_TO_DATE(CAST(sls_due_dt AS CHAR), '%Y%m%d'),
+        STR_TO_DATE(
+            NULLIF(CAST(sls_order_dt AS CHAR), '0'),
+            '%Y%m%d'
+        ),
+        STR_TO_DATE(
+            NULLIF(CAST(sls_ship_dt AS CHAR), '0'),
+            '%Y%m%d'
+        ),
+        STR_TO_DATE(
+            NULLIF(CAST(sls_due_dt AS CHAR), '0'),
+            '%Y%m%d'
+        ),
         CASE
             WHEN raw_sales IS NULL
               OR raw_sales = 0
@@ -118,31 +127,46 @@ BEGIN
         clean_price
     FROM calculated;
 
-    /* ERP customer: normalize ID and standardize demographics */
+    /* ERP customer: normalize ID, standardize demographics, and keep one row per customer */
     TRUNCATE TABLE silver.erp_cust_az12;
 
     INSERT INTO silver.erp_cust_az12 (cid, bdate, gen)
     SELECT
-        CASE
-            WHEN UPPER(TRIM(cid)) LIKE 'NAS%' THEN SUBSTRING(TRIM(cid), 4)
-            ELSE TRIM(cid)
-        END,
+        cid,
         CASE
             WHEN ddate > CURRENT_DATE() THEN NULL
             ELSE ddate
         END,
-        CASE
-            WHEN UPPER(TRIM(gen)) LIKE 'F%' THEN 'Female'
-            WHEN UPPER(TRIM(gen)) LIKE 'M%' THEN 'Male'
-            ELSE 'n/a'
-        END
-    FROM bronze.erp_cust_az12;
+        gen
+    FROM (
+        SELECT
+            CASE
+                WHEN UPPER(TRIM(cid)) LIKE 'NAS%' THEN SUBSTRING(TRIM(cid), 4)
+                ELSE TRIM(cid)
+            END AS cid,
+            ddate,
+            CASE
+                WHEN UPPER(TRIM(gen)) LIKE 'F%' THEN 'Female'
+                WHEN UPPER(TRIM(gen)) LIKE 'M%' THEN 'Male'
+                ELSE 'n/a'
+            END AS gen,
+            ROW_NUMBER() OVER (
+                PARTITION BY
+                    CASE
+                        WHEN UPPER(TRIM(cid)) LIKE 'NAS%' THEN SUBSTRING(TRIM(cid), 4)
+                        ELSE TRIM(cid)
+                    END
+                ORDER BY ddate DESC, TRIM(cid) DESC
+            ) AS rn
+        FROM bronze.erp_cust_az12
+    ) x
+    WHERE rn = 1;
 
-    /* ERP location: normalize IDs and countries */
+    /* ERP location: normalize IDs/countries and deduplicate business keys */
     TRUNCATE TABLE silver.erp_loc_a101;
 
     INSERT INTO silver.erp_loc_a101 (cid, cntry)
-    SELECT
+    SELECT DISTINCT
         REPLACE(TRIM(cid), '-', ''),
         CASE
             WHEN UPPER(TRIM(cntry)) = 'DE' THEN 'Germany'
@@ -157,8 +181,11 @@ BEGIN
 
     INSERT INTO silver.erp_px_cat_g1v2
         (id, cat, subcat, maintenance)
-    SELECT
-        TRIM(id), TRIM(cat), TRIM(subcat), TRIM(maintenance)
+    SELECT DISTINCT
+        TRIM(id),
+        TRIM(cat),
+        TRIM(subcat),
+        TRIM(maintenance)
     FROM bronze.erp_px_cat_g1v2;
 END$$
 
