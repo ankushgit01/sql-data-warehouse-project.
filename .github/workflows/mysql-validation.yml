@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: mysql-warehouse-validation
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
