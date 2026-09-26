@@ -1,5 +1,7 @@
 # SQL Data Warehouse & Analytics Project
 
+[![MySQL Warehouse Validation](https://github.com/ankushgit01/sql-data-warehouse-project./actions/workflows/mysql-validation.yml/badge.svg)](https://github.com/ankushgit01/sql-data-warehouse-project./actions/workflows/mysql-validation.yml)
+
 An end-to-end MySQL 8.0+ data warehouse project integrating CRM and ERP CSV sources through a Bronze -> Silver -> Gold architecture and a star-schema-style analytical layer.
 
 ## Project objectives
@@ -159,6 +161,7 @@ See `docs/data_quality.md` for the rules and handling strategy.
 - top customers by lifetime revenue
 - customer distribution by country
 - shipping performance
+- data-quality mapping visibility
 
 ## Reproducibility
 
