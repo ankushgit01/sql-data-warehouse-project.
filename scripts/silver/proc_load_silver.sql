@@ -69,7 +69,7 @@ BEGIN
         )
     FROM bronze.crm_prd_info;
 
-    /* CRM sales: convert source dates and reconcile sales/price */
+    /* CRM sales: convert valid YYYYMMDD values and reconcile sales/price */
     TRUNCATE TABLE silver.crm_sales_details;
 
     INSERT INTO silver.crm_sales_details
@@ -93,6 +93,78 @@ BEGIN
         SELECT
             *,
             CASE
+                WHEN sls_order_dt IS NULL THEN NULL
+                WHEN CAST(sls_order_dt AS CHAR) NOT REGEXP '^[0-9]{8}$' THEN NULL
+                WHEN sls_order_dt NOT BETWEEN 19000101 AND 20501231 THEN NULL
+                WHEN CAST(SUBSTRING(CAST(sls_order_dt AS CHAR), 5, 2) AS UNSIGNED) NOT BETWEEN 1 AND 12 THEN NULL
+                WHEN CAST(SUBSTRING(CAST(sls_order_dt AS CHAR), 7, 2) AS UNSIGNED) NOT BETWEEN 1 AND
+                    CASE
+                        WHEN CAST(SUBSTRING(CAST(sls_order_dt AS CHAR), 5, 2) AS UNSIGNED) = 2
+                            THEN 28 + IF(
+                                MOD(FLOOR(sls_order_dt / 10000), 400) = 0
+                                OR (
+                                    MOD(FLOOR(sls_order_dt / 10000), 4) = 0
+                                    AND MOD(FLOOR(sls_order_dt / 10000), 100) <> 0
+                                ),
+                                1,
+                                0
+                            )
+                        WHEN CAST(SUBSTRING(CAST(sls_order_dt AS CHAR), 5, 2) AS UNSIGNED) IN (4,6,9,11)
+                            THEN 30
+                        ELSE 31
+                    END THEN NULL
+                ELSE STR_TO_DATE(CAST(sls_order_dt AS CHAR), '%Y%m%d')
+            END AS clean_order_dt,
+
+            CASE
+                WHEN sls_ship_dt IS NULL THEN NULL
+                WHEN CAST(sls_ship_dt AS CHAR) NOT REGEXP '^[0-9]{8}$' THEN NULL
+                WHEN sls_ship_dt NOT BETWEEN 19000101 AND 20501231 THEN NULL
+                WHEN CAST(SUBSTRING(CAST(sls_ship_dt AS CHAR), 5, 2) AS UNSIGNED) NOT BETWEEN 1 AND 12 THEN NULL
+                WHEN CAST(SUBSTRING(CAST(sls_ship_dt AS CHAR), 7, 2) AS UNSIGNED) NOT BETWEEN 1 AND
+                    CASE
+                        WHEN CAST(SUBSTRING(CAST(sls_ship_dt AS CHAR), 5, 2) AS UNSIGNED) = 2
+                            THEN 28 + IF(
+                                MOD(FLOOR(sls_ship_dt / 10000), 400) = 0
+                                OR (
+                                    MOD(FLOOR(sls_ship_dt / 10000), 4) = 0
+                                    AND MOD(FLOOR(sls_ship_dt / 10000), 100) <> 0
+                                ),
+                                1,
+                                0
+                            )
+                        WHEN CAST(SUBSTRING(CAST(sls_ship_dt AS CHAR), 5, 2) AS UNSIGNED) IN (4,6,9,11)
+                            THEN 30
+                        ELSE 31
+                    END THEN NULL
+                ELSE STR_TO_DATE(CAST(sls_ship_dt AS CHAR), '%Y%m%d')
+            END AS clean_ship_dt,
+
+            CASE
+                WHEN sls_due_dt IS NULL THEN NULL
+                WHEN CAST(sls_due_dt AS CHAR) NOT REGEXP '^[0-9]{8}$' THEN NULL
+                WHEN sls_due_dt NOT BETWEEN 19000101 AND 20501231 THEN NULL
+                WHEN CAST(SUBSTRING(CAST(sls_due_dt AS CHAR), 5, 2) AS UNSIGNED) NOT BETWEEN 1 AND 12 THEN NULL
+                WHEN CAST(SUBSTRING(CAST(sls_due_dt AS CHAR), 7, 2) AS UNSIGNED) NOT BETWEEN 1 AND
+                    CASE
+                        WHEN CAST(SUBSTRING(CAST(sls_due_dt AS CHAR), 5, 2) AS UNSIGNED) = 2
+                            THEN 28 + IF(
+                                MOD(FLOOR(sls_due_dt / 10000), 400) = 0
+                                OR (
+                                    MOD(FLOOR(sls_due_dt / 10000), 4) = 0
+                                    AND MOD(FLOOR(sls_due_dt / 10000), 100) <> 0
+                                ),
+                                1,
+                                0
+                            )
+                        WHEN CAST(SUBSTRING(CAST(sls_due_dt AS CHAR), 5, 2) AS UNSIGNED) IN (4,6,9,11)
+                            THEN 30
+                        ELSE 31
+                    END THEN NULL
+                ELSE STR_TO_DATE(CAST(sls_due_dt AS CHAR), '%Y%m%d')
+            END AS clean_due_dt,
+
+            CASE
                 WHEN raw_price IS NULL OR raw_price = 0
                     THEN ROUND(raw_sales / NULLIF(sls_quantity, 0), 2)
                 ELSE raw_price
@@ -103,18 +175,9 @@ BEGIN
         sls_ord_num,
         sls_prd_key,
         sls_cust_id,
-        STR_TO_DATE(
-            NULLIF(CAST(sls_order_dt AS CHAR), '0'),
-            '%Y%m%d'
-        ),
-        STR_TO_DATE(
-            NULLIF(CAST(sls_ship_dt AS CHAR), '0'),
-            '%Y%m%d'
-        ),
-        STR_TO_DATE(
-            NULLIF(CAST(sls_due_dt AS CHAR), '0'),
-            '%Y%m%d'
-        ),
+        clean_order_dt,
+        clean_ship_dt,
+        clean_due_dt,
         CASE
             WHEN raw_sales IS NULL
               OR raw_sales = 0
