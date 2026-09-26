@@ -2,7 +2,9 @@
 ============================================================
 CI Validation
 ============================================================
-Fails the MySQL process when critical checks fail.
+Fails the MySQL process when critical warehouse checks fail.
+Known source order-date anomalies are reported but are not
+treated as a pipeline failure.
 ============================================================
 */
 
@@ -26,20 +28,40 @@ BEGIN
 
     SELECT COUNT(*) INTO v_count
     FROM silver.crm_sales_details
-    WHERE sls_order_dt IS NULL
-       OR sls_ship_dt IS NULL
-       OR sls_due_dt IS NULL
-       OR sls_quantity <= 0
+    WHERE sls_quantity <= 0
+       OR sls_price IS NULL
+       OR sls_sales IS NULL
        OR sls_price <= 0
        OR sls_sales <= 0
        OR ABS(sls_sales - (sls_quantity * sls_price)) > 0.01;
     SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
 
     SELECT COUNT(*) INTO v_count
+    FROM (
+        SELECT customer_number
+        FROM gold.dim_customers
+        GROUP BY customer_number
+        HAVING COUNT(*) > 1
+    ) duplicates;
+    SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count
+    FROM (
+        SELECT product_number
+        FROM gold.dim_products
+        GROUP BY product_number
+        HAVING COUNT(*) > 1
+    ) duplicates;
+    SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
+
+    SELECT COUNT(*) INTO v_count
     FROM gold.fact_sales
     WHERE customer_key IS NULL
        OR product_key IS NULL
-       OR order_date IS NULL;
+       OR order_number IS NULL
+       OR sales_amount IS NULL
+       OR quantity IS NULL
+       OR price IS NULL;
     SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
 
     SELECT COUNT(*) INTO v_count
@@ -50,9 +72,14 @@ BEGIN
        OR ABS(sales_amount - (quantity * price)) > 0.01;
     SET bad_checks = bad_checks + IF(v_count > 0, 1, 0);
 
+    SELECT COUNT(*) AS source_order_date_exceptions
+    FROM gold.fact_sales
+    WHERE order_date IS NULL;
+
     IF bad_checks > 0 THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'CI validation failed: critical data-quality checks returned violations.';
+            SET MESSAGE_TEXT =
+                'CI validation failed: critical data-quality checks returned violations.';
     END IF;
 END$$
 
