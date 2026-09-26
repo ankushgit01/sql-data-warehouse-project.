@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+env:
+  MYSQL_HOST: 127.0.0.1
+  MYSQL_PORT: 3306
+  MYSQL_USER: root
+  MYSQL_PWD: root
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -34,30 +43,32 @@ jobs:
 
       - name: Enable LOCAL INFILE on MySQL server
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot             -e "SET GLOBAL local_infile = 1;"
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             -e "SET GLOBAL local_infile = 1;"
 
       - name: Initialize layer databases
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/init_database.sql
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             --local-infile=1             < scripts/init_database.sql
 
       - name: Create Bronze tables
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/bronze/ddl_bronze.sql
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             --local-infile=1             < scripts/bronze/ddl_bronze.sql
 
       - name: Load Bronze data
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/bronze/load_bronze.sql
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             --local-infile=1             < scripts/bronze/load_bronze.sql
 
       - name: Build Silver
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/silver/ddl_silver.sql
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot --local-infile=1             < scripts/silver/proc_load_silver.sql
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot -e             "CALL silver.load_silver();"
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             --local-infile=1             < scripts/silver/ddl_silver.sql
+
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             --local-infile=1             < scripts/silver/proc_load_silver.sql
+
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             -e "CALL silver.load_silver();"
 
       - name: Build Gold
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot             < scripts/gold/ddl_gold.sql
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             < scripts/gold/ddl_gold.sql
 
       - name: Run CI data-quality validation
         run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot             < tests/ci_validation.sql
+          mysql             -h "$MYSQL_HOST"             -P "$MYSQL_PORT"             -u "$MYSQL_USER"             < tests/ci_validation.sql
