@@ -6,6 +6,12 @@ Uses MySQL LOAD DATA LOCAL INFILE.
 
 Run the MySQL client from the repository root so the relative
 paths resolve correctly.
+
+Source-date handling:
+- CRM customer create dates are loaded through a user variable.
+- MySQL strict mode rejects the source value 0000-00-00 when
+  loading directly into a DATE column, so that known source
+  anomaly is converted to NULL during ingestion.
 ============================================================
 */
 
@@ -15,7 +21,23 @@ INTO TABLE bronze.crm_cust_info
 FIELDS TERMINATED BY ','
 OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+IGNORE 1 ROWS
+(
+    cst_id,
+    cst_key,
+    cst_firstname,
+    cst_lastname,
+    cst_marital_status,
+    cst_gndr,
+    @cst_create_date
+)
+SET cst_create_date =
+    CASE
+        WHEN NULLIF(TRIM(@cst_create_date), '') IS NULL
+          OR TRIM(@cst_create_date) = '0000-00-00'
+            THEN NULL
+        ELSE STR_TO_DATE(TRIM(@cst_create_date), '%Y-%m-%d')
+    END;
 
 TRUNCATE TABLE bronze.crm_prd_info;
 LOAD DATA LOCAL INFILE 'datasets/source_crm/prd_info.csv'
