@@ -1,54 +1,24 @@
 /*
 ============================================================
-Create Database and Schemas
+Initialize Data Warehouse
 ============================================================
-
-Script Purpose:
-    This script creates a new database named 'DataWarehouse' after checking if it already exists.
-    If the database exists, it is dropped and recreated. Additionally, the script sets up three schemas
-    within the database: 'bronze', 'silver', and 'gold'.
+Target database: MySQL 8.0+
+Architecture: Bronze -> Silver -> Gold
 
 WARNING:
-    Running this script will drop the entire 'DataWarehouse' database if it exists.
-    All data in the database will be permanently deleted. Proceed with caution
-    and ensure you have proper backups before running this script.
+    This script is destructive. It drops and recreates the
+    DataWarehouse database and all of its objects.
+============================================================
 */
 
--- =============================================
--- 📊 Data Warehouse Database Setup
--- =============================================
+DROP DATABASE IF EXISTS DataWarehouse;
 
--- Drop database if it exists
-IF EXISTS (SELECT name FROM sys.databases WHERE name = 'DataWarehouse')
-BEGIN
-    DROP DATABASE DataWarehouse;
-END;
-GO
+CREATE DATABASE DataWarehouse
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_0900_ai_ci;
 
--- Create Database
-CREATE DATABASE DataWarehouse;
-GO
-
--- Use Database
 USE DataWarehouse;
-GO
 
--- =============================================
--- 🏗️ Schema Architecture (Medallion Architecture)
--- =============================================
-
--- 🔸 Bronze Layer (Raw Data)
 CREATE SCHEMA bronze;
-GO
-
--- 🔹 Silver Layer (Cleaned & Transformed Data)
 CREATE SCHEMA silver;
-GO
-
--- 🟡 Gold Layer (Business-Level Data)
 CREATE SCHEMA gold;
-GO
-
--- =============================================
--- ✅ Setup Completed Successfully
--- =============================================
