@@ -1,5 +1,12 @@
-/* Silver layer DDL - MySQL 8.0+ */
-USE DataWarehouse;
+/*
+============================================================
+Create Silver Layer Tables
+============================================================
+Silver = cleaned and standardized data.
+Target: MySQL 8.0+
+Database: silver
+============================================================
+*/
 
 DROP TABLE IF EXISTS silver.crm_cust_info;
 DROP TABLE IF EXISTS silver.crm_prd_info;
@@ -17,7 +24,7 @@ CREATE TABLE silver.crm_cust_info (
     cst_gndr VARCHAR(50) NOT NULL,
     cst_create_date DATE,
     dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_crm_cust_id (cst_id),
+    PRIMARY KEY (cst_id),
     INDEX idx_crm_cust_key (cst_key)
 );
 
@@ -37,8 +44,8 @@ CREATE TABLE silver.crm_prd_info (
 
 CREATE TABLE silver.crm_sales_details (
     sls_ord_num VARCHAR(50) NOT NULL,
-    sls_prd_key VARCHAR(50),
-    sls_cust_id INT,
+    sls_prd_key VARCHAR(50) NOT NULL,
+    sls_cust_id INT NOT NULL,
     sls_order_dt DATE,
     sls_ship_dt DATE,
     sls_due_dt DATE,
