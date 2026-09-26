@@ -1,6 +1,6 @@
 /* Gold analytics - MySQL 8.0+ */
 
--- 1. Overall KPI snapshot
+-- 1. Overall KPI snapshot for fully mapped sales
 SELECT
     COUNT(DISTINCT order_number) AS total_orders,
     COUNT(DISTINCT customer_key) AS active_customers,
@@ -71,6 +71,7 @@ ORDER BY customers DESC;
 SELECT
     CASE
         WHEN shipping_date IS NULL THEN 'Not shipped'
+        WHEN due_date IS NULL THEN 'Due date missing'
         WHEN shipping_date <= due_date THEN 'On time'
         ELSE 'Late'
     END AS shipping_status,
@@ -79,7 +80,16 @@ FROM gold.fact_sales
 GROUP BY
     CASE
         WHEN shipping_date IS NULL THEN 'Not shipped'
+        WHEN due_date IS NULL THEN 'Due date missing'
         WHEN shipping_date <= due_date THEN 'On time'
         ELSE 'Late'
     END
 ORDER BY order_lines DESC;
+
+-- 8. Mapping and source-date diagnostics
+SELECT
+    COUNT(*) AS total_fact_rows,
+    SUM(customer_key IS NULL) AS unmapped_customers,
+    SUM(product_key IS NULL) AS unmapped_products,
+    SUM(order_date IS NULL) AS missing_order_dates
+FROM gold.fact_sales;
