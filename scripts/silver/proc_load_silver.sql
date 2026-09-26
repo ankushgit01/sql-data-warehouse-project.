@@ -1,5 +1,4 @@
 /* Silver layer load procedure - MySQL 8.0+ */
-USE DataWarehouse;
 
 DROP PROCEDURE IF EXISTS silver.load_silver;
 DELIMITER $$
@@ -29,19 +28,17 @@ BEGIN
         END,
         cst_create_date
     FROM (
-        SELECT
-            b.*,
-            ROW_NUMBER() OVER (
-                PARTITION BY cst_id
-                ORDER BY cst_create_date DESC
-            ) AS rn
+        SELECT b.*,
+               ROW_NUMBER() OVER (
+                   PARTITION BY cst_id
+                   ORDER BY cst_create_date DESC
+               ) AS rn
         FROM bronze.crm_cust_info b
         WHERE cst_id IS NOT NULL
     ) x
     WHERE rn = 1;
 
-
-    /* CRM product: standardize category/product keys and derive validity windows */
+    /* CRM product: normalize keys and derive product validity windows */
     TRUNCATE TABLE silver.crm_prd_info;
 
     INSERT INTO silver.crm_prd_info
@@ -49,8 +46,8 @@ BEGIN
          prd_line, prd_start_dt, prd_end_dt)
     SELECT
         prd_id,
-        REPLACE(SUBSTRING(TRIM(prd_key), 1, 5), '-', '_') AS cat_id,
-        SUBSTRING(TRIM(prd_key), 7) AS prd_key,
+        REPLACE(SUBSTRING(TRIM(prd_key), 1, 5), '-', '_'),
+        SUBSTRING(TRIM(prd_key), 7),
         TRIM(prd_nm),
         COALESCE(prd_cost, 0),
         CASE
@@ -72,8 +69,7 @@ BEGIN
         )
     FROM bronze.crm_prd_info;
 
-
-    /* CRM sales: convert dates and reconcile sales/price inconsistencies */
+    /* CRM sales: convert source dates and reconcile sales/price */
     TRUNCATE TABLE silver.crm_sales_details;
 
     INSERT INTO silver.crm_sales_details
@@ -117,17 +113,15 @@ BEGIN
               OR ABS(raw_sales - (sls_quantity * clean_price)) > 0.01
                 THEN sls_quantity * clean_price
             ELSE raw_sales
-        END AS clean_sales,
+        END,
         sls_quantity,
         clean_price
     FROM calculated;
 
-
-    /* ERP customer: normalize ID, protect against future birth dates, standardize gender */
+    /* ERP customer: normalize ID and standardize demographics */
     TRUNCATE TABLE silver.erp_cust_az12;
 
-    INSERT INTO silver.erp_cust_az12
-        (cid, bdate, gen)
+    INSERT INTO silver.erp_cust_az12 (cid, bdate, gen)
     SELECT
         CASE
             WHEN UPPER(TRIM(cid)) LIKE 'NAS%' THEN SUBSTRING(TRIM(cid), 4)
@@ -144,12 +138,10 @@ BEGIN
         END
     FROM bronze.erp_cust_az12;
 
-
-    /* ERP location: normalize customer IDs and countries */
+    /* ERP location: normalize IDs and countries */
     TRUNCATE TABLE silver.erp_loc_a101;
 
-    INSERT INTO silver.erp_loc_a101
-        (cid, cntry)
+    INSERT INTO silver.erp_loc_a101 (cid, cntry)
     SELECT
         REPLACE(TRIM(cid), '-', ''),
         CASE
@@ -160,17 +152,13 @@ BEGIN
         END
     FROM bronze.erp_loc_a101;
 
-
     /* ERP product category: trim source values */
     TRUNCATE TABLE silver.erp_px_cat_g1v2;
 
     INSERT INTO silver.erp_px_cat_g1v2
         (id, cat, subcat, maintenance)
     SELECT
-        TRIM(id),
-        TRIM(cat),
-        TRIM(subcat),
-        TRIM(maintenance)
+        TRIM(id), TRIM(cat), TRIM(subcat), TRIM(maintenance)
     FROM bronze.erp_px_cat_g1v2;
 END$$
 
