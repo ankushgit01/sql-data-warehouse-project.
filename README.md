@@ -78,7 +78,7 @@ tests/
 10. `tests/quality_checks_gold.sql`
 11. `scripts/gold/analytics.sql`
 
-See [docs/runbook.md](docs/runbook.md) for detailed setup and troubleshooting, and [docs/data_model.md](docs/data_model.md) for the warehouse model.
+See [docs/runbook.md](docs/runbook.md) for setup and [docs/data_model.md](docs/data_model.md) for the model.
 
 ## Engineering practices
 
@@ -95,7 +95,7 @@ See [docs/runbook.md](docs/runbook.md) for detailed setup and troubleshooting, a
 
 ## MySQL note
 
-The project is intentionally implemented for **MySQL 8.0+**. Bronze uses `LOAD DATA LOCAL INFILE`; enable local file loading in the MySQL client/server as described in the runbook.
+The project is intentionally implemented for **MySQL 8.0+**. Bronze uses `LOAD DATA LOCAL INFILE`; enable local file loading as described in the runbook.
 
 ## About
 
